@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Reader - Upload & Paste</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #0d6efd; /* สีฟ้าตามสไตล์ภาพอ้างอิง */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        h2 { margin-top: 0; color: #333; }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            margin: 20px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+        }
+        .upload-area:hover {
+            border-color: #0d6efd;
+            background-color: #f0f8ff;
+        }
+        
+        /* ซ่อน input file ของจริงไว้ */
+        #file-input { display: none; }
+        
+        .btn {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        #result-area {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none; /* ซ่อนไว้ก่อน */
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        
+        a.qr-link {
+            font-weight: bold;
+            color: #0d6efd;
+            text-decoration: underline;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>เครื่องอ่าน QR Code</h2>
+        <p>คลิกเพื่อเลือกไฟล์ หรือกด <b>Ctrl+V</b> เพื่อวางรูปที่นี่</p>
+
+        <div class="upload-area" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <p>📂 คลิกที่นี่เพื่ออัปโหลด<br>หรือกด Ctrl+V ได้เลย</p>
+        </div>
+        
+        <input type="file" id="file-input" accept="image/*">
+
+        <div id="result-area"></div>
+    </div>
+
+    <script>
+        const html5QrCode = new Html5Qrcode("drop-zone"); // ใช้ Library สร้างตัวอ่าน
+        const resultArea = document.getElementById('result-area');
+        const fileInput = document.getElementById('file-input');
+
+        // ฟังก์ชันสำหรับอ่าน QR Code จากไฟล์ภาพ
+        const scanImage = (file) => {
+            if (!file) return;
+
+            // แสดงข้อความว่ากำลังประมวลผล
+            resultArea.style.display = 'block';
+            resultArea.className = '';
+            resultArea.innerHTML = "⏳ กำลังอ่าน QR Code...";
+
+            html5QrCode.scanFile(file, true)
+            .then(decodedText => {
+                // กรณีอ่านสำเร็จ
+                resultArea.className = 'success';
+                // ตรวจสอบว่าเป็น Link หรือไม่ แล้วสร้างลิงก์ให้กด
+                if (isValidURL(decodedText)) {
+                    resultArea.innerHTML = `✅ เจอลิงก์สำเร็จ:<br><br> <a href="${decodedText}" class="qr-link" target="_blank">🔗 คลิกเพื่อไปที่: ${decodedText}</a>`;
+                } else {
+                    resultArea.innerHTML = `✅ ข้อความใน QR Code คือ:<br><b>${decodedText}</b>`;
+                }
+            })
+            .catch(err => {
+                // กรณีอ่านไม่เจอ หรือไฟล์ไม่ใช่ QR
+                resultArea.className = 'error';
+                resultArea.innerHTML = "❌ ไม่พบ QR Code ในภาพนี้ กรุณาลองใหม่";
+                console.log(`Error scanning file: ${err}`);
+            });
+        };
+
+        // 1. จัดการเมื่อมีการเลือกไฟล์ (Upload)
+        fileInput.addEventListener('change', e => {
+            if (e.target.files.length == 0) return;
+            scanImage(e.target.files[0]);
+        });
+
+        // 2. จัดการเมื่อมีการกด Ctrl+V (Paste)
+        document.addEventListener('paste', e => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    scanImage(blob); // ส่งไฟล์ที่วางไปให้ฟังก์ชันสแกน
+                }
+            }
+        });
+
+        // ฟังก์ชันเช็คว่าเป็น URL หรือไม่ (แบบง่าย)
+        function isValidURL(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;  
+            }
+        }
+    </script>
+
+</body>
+</html>
